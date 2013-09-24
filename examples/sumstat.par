@@ -1,0 +1,14 @@
+//THIS FILE SPECIFIES WHICH SUMMARY STATISTICS NEED TO BE COMPUTED:
+// (SEPARATE PARAMETERS WITH "#")
+// ifoutput: 0:skip computation / 1:print to file
+// onlymean&sd: 0:print ONLY mean and sd over loci / 1:print the statistic locus by locus
+//parameters for base frequency: name - ifoutput - onlymean&sd
+BASEFREQ#1#1
+//parameters for heterozigosity: name - ifoutputHETOBS - ifoutputHETEXP - onlymean&sd
+HET#1#1#1
+//Parameters for AFS computation: name - ifoutputAFS - AFSdimensions(1, 2 or 3) - unfolded?(0n/1y)
+AFS#1#1#0
+//parameters for Nei Gst73, NeiGst83, G'stHed05, JostD and FstW&C84 computation: name - ifoutputFST - onlymean
+DIST#1#1
+//Parameters for similarity/dissimilarity index matrix: name - ifoutput - typeofindex(0:sim/1:dis)
+DALL#1#1
