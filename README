@@ -1,0 +1,25 @@
+-------------------------------------------------------------------------------------------------------------------------
+4P - Parallel Processing of Polymorphism Panels
+-------------------------------------------------------------------------------------------------------------------------
+Package content:
+/src: the source code folder
+/bin: 32-64 bit binaries for win/mac/linux
+/doc: manual pdf
+/examples: example files
+-------------------------------------------------------------------------------------------------------------------------
+Basic usage:
+1- set proper statistics in the sumstat.par file (all statistics are switched off by default)
+2- type "4p_<bit>_<platform> -h" for an overview over the basic options
+-------------------------------------------------------------------------------------------------------------------------
+Some usage examples:
+example run:	4p -f example_20ind_10snp.ped -m example_20ind_10snp.map -i 0 -n 20 -s 10 -t 1
+example run:	4p -f example_1000ind_100snp.arp -i 1 -n 1000 -s 100 -t 2
+example run:	4p -f example_10ind_10snp.vcf -i 2 -n 10 -s 10 -t 1 -p example_pop_index.txt
+-------------------------------------------------------------------------------------------------------------------------
+Compiling informations:
+enter the src directory and type 
+compile linux:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -o 4p ./*.c
+compile mac:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=0 -mmacosx-version-min=10.6 -o 4p_mac ./*.c
+compile win:	see manual
+-------------------------------------------------------------------------------------------------------------------------
+
