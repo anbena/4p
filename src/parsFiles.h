@@ -14,6 +14,8 @@ int loadPop(struct ind_gen *matgen, long int row, FILE *i_p);
 
 int loadAncAll(struct ind_map *matmap, long int col, FILE *i_a);
 
+int loadAncAll1(struct ind_map *matmap, long int col, FILE *i_a);
+
 int loadAncAll_fast(struct ind_map *matmap, long int col, FILE *i_a);
 
 int loadAncAll_fast_mp(struct ind_map *matmap, long int col, FILE *i_a, int nt);

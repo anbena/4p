@@ -14,7 +14,7 @@
 struct ind_gen;
 struct ind_map;
 
-int computeBaseFreq(struct ind_gen *matgen, struct ind_map *matmap, long int row, long int col, char *namepop, char *type, int nt)
+int computeBaseFreq(struct ind_gen *matgen, struct ind_map *matmap, long int row, long int col, char *namepop, char *type, int header, int nt)
 /*This function compute base frequencies for each SNP and compute the minor allele */
 /* matgen is the structure with genotypes */
 /* row is the number or individuals */
@@ -34,8 +34,10 @@ int computeBaseFreq(struct ind_gen *matgen, struct ind_map *matmap, long int row
 		tot[i]=(float *) malloc(col*sizeof(float));
 		if (tot[i]==NULL){perror("ERROR: computeBaseFreq: locus specific memory allocation failure.");}
 	}
-	char b[col];
-	float v_maf[col];
+	char *b=malloc(col*sizeof(char));
+	if (b==NULL){printf("\nERROR: computeBaseFreq: error allocating memory (1)");return 1;}
+	float *v_maf=malloc(col*sizeof(float));
+	if (v_maf==NULL){printf("\nERROR: computeBaseFreq: error allocating memory (2)");return 1;}
 	double tota,totc,tott,totg,totm=0;
 	double totsd[5]={0,0,0,0,0};
 	float min;
@@ -125,26 +127,29 @@ int computeBaseFreq(struct ind_gen *matgen, struct ind_map *matmap, long int row
 		}
 	printf("[done]");
 	strcpy(iname,"SNP_BASE_FREQUENCY_");
-	strcat(iname,namepop);
-	strcat(iname,".txt");
 	if (type[0]=='1'){//print on a file
+		strcat(iname,namepop);
+		strcat(iname,".txt");
 		freq_f=fopen(iname,"w");
 		printf(" - Writing frequencies to file\t");
-		fprintf(freq_f,"POS\tRS\tA\tC\tT\tG\tMISS\tMAFALL\tMAF\n");
+		fprintf(freq_f,"CHR\tPOS\tRS\tA\tC\tT\tG\tMISS\tMAFALL\tMAF\n");
 		for (i=0;i<col;i++){
 			if (tot[5][i]!=0){
-				fprintf(freq_f,"%ld\t%s\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%c\t%1.5f\n",matmap[i].bp_pos,matmap[i].rs,tot[0][i]/(tot[5][i]),tot[1][i]/(tot[5][i]),tot[2][i]/(tot[5][i]),tot[3][i]/(tot[5][i]),tot[4][i]/(tot[0][i]+tot[1][i]+tot[2][i]+tot[3][i]+tot[4][i]),b[i],v_maf[i]);
+				fprintf(freq_f,"%d\t%ld\t%s\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%c\t%1.5f\n",matmap[i].crom,matmap[i].bp_pos,matmap[i].rs,tot[0][i]/(tot[5][i]),tot[1][i]/(tot[5][i]),tot[2][i]/(tot[5][i]),tot[3][i]/(tot[5][i]),tot[4][i]/(tot[0][i]+tot[1][i]+tot[2][i]+tot[3][i]+tot[4][i]),b[i],v_maf[i]);
 			}
 			else{
-				fprintf(freq_f,"%ld\t%s\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%c\t%1.5f\n",matmap[i].bp_pos,matmap[i].rs,0.0,0.0,0.0,0.0,tot[4][i]/(tot[0][i]+tot[1][i]+tot[2][i]+tot[3][i]+tot[4][i]),b[i],v_maf[i]);
+				fprintf(freq_f,"%d\t%ld\t%s\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%1.5f\t%c\t%1.5f\n",matmap[i].crom,matmap[i].bp_pos,matmap[i].rs,0.0,0.0,0.0,0.0,tot[4][i]/(tot[0][i]+tot[1][i]+tot[2][i]+tot[3][i]+tot[4][i]),b[i],v_maf[i]);
 			}
 		}
 		fclose(freq_f);
 	}
 	else if (type[0]=='0'){//print only summary
-		freq_f=fopen(iname,"w");
+		strcat(iname,"SUMMARY.txt");
+		if (header){
+			freq_f=fopen(iname,"w");
+			fprintf(freq_f,"population\tmean(A)\tmean(C)\tmean(T)\tmean(G)\tmean(MISS)\tsd(A)\tsd(C)\tsd(T)\tsd(G)\tsd(MISS)\n");
+		}else{freq_f=fopen(iname,"a+");}
 		printf(" - Writing frequencies summary to file\t");
-		fprintf(freq_f,"mean(A)\tmean(C)\tmean(T)\tmean(G)\tmean(MISS)\tsd(A)\tsd(C)\tsd(T)\tsd(G)\tsd(MISS)\n");
 		//tota=tota/(2*row*col);totc=totc/(2*row*col);tott=tott/(2*row*col);totg=totg/(2*row*col);totm=totm/(2*row*col);
 		for (i=0;i<col;i++){
 			if (tot[5][i]!=0){
@@ -160,25 +165,26 @@ int computeBaseFreq(struct ind_gen *matgen, struct ind_map *matmap, long int row
 		totsd[2]=sqrt(totsd[2]/(col-ntmiss-1));
 		totsd[3]=sqrt(totsd[3]/(col-ntmiss-1));
 		totsd[4]=sqrt(totsd[4]/(col-1));
-		fprintf(freq_f,"%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",tota/(col-ntmiss),totc/(col-ntmiss),tott/(col-ntmiss),totg/(col-ntmiss),totm/col,totsd[0],totsd[1],totsd[2],totsd[3],totsd[4]);
+		fprintf(freq_f,"%s\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",namepop,tota/(col-ntmiss),totc/(col-ntmiss),tott/(col-ntmiss),totg/(col-ntmiss),totm/col,totsd[0],totsd[1],totsd[2],totsd[3],totsd[4]);
 		fclose(freq_f);
 	}
 	for (i=0;i<6;i++){free(tot[i]);}
-	free(tot);
+	free(tot);free(b);free(v_maf);
 	printf("[done]\n");
 	return 0;
 }
 
 
-int hetOss(struct ind_gen *matgen, struct ind_map *matmap, char *namepop, long int col, long int row, char *type, int nt)
+int hetOss(struct ind_gen *matgen, struct ind_map *matmap, char *namepop, long int col, long int row, char *type, int header, int nt)
 /*This function compute the observed heterozigosity for each snp */
 {
 long int j,i,c,ntmiss;
 long int tot=0;
-float v_ho[col];
 float totsd,totv=0;
 FILE *o_oh;
 char iname[100];
+float *v_ho=malloc(col*sizeof(float));
+if (v_ho==NULL){printf("\nERROR: hetOss: error allocating memory (1)");return 1;}
 int iCPU = omp_get_num_procs();/*maximum number of threads in the system*/
 if (nt>iCPU){nt=iCPU;}
 omp_set_num_threads(nt);/* Now set the number of threads*/
@@ -216,44 +222,49 @@ for (j=0;j<col;j++){
 }
 printf("[done]");
 strcpy(iname,"HET_OBS_");
-strcat(iname,namepop);
-strcat(iname,".txt");
 if (type[0]=='1'){//print on a file
+	strcat(iname,namepop);
+	strcat(iname,".txt");
 	printf(" - Writing observed het. to file\t");
 	o_oh=fopen(iname,"w");
-	fprintf(o_oh,"POS\tRS\tH_OBS\n");
+	fprintf(o_oh,"CHR\tPOS\tRS\tH_OBS\n");
 	for (j=0;j<col;j++){
-		if (v_ho[j]!=-9){fprintf(o_oh,"%ld\t%s\t%1.5f\n",matmap[j].bp_pos,matmap[j].rs,v_ho[j]);}
-		else{fprintf(o_oh,"%ld\t%s\tNA\n",matmap[j].bp_pos,matmap[j].rs);}
+		if (v_ho[j]!=-9){fprintf(o_oh,"%d\t%ld\t%s\t%1.5f\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs,v_ho[j]);}
+		else{fprintf(o_oh,"%d\t%ld\t%s\tNA\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs);}
 	}
 	fclose(o_oh);
 	printf("[done]\n");
 }
 else if (type[0]=='0'){//print only summary
-	o_oh=fopen(iname,"w");
+	strcat(iname,"SUMMARY.txt");
+	if (header){
+		o_oh=fopen(iname,"w");
+		fprintf(o_oh,"population\tmean(H_OBS)\tsd(H_OBS)\n");
+	}else{o_oh=fopen(iname,"a+");}
 	printf(" - Writing observed het. summary to file\t");
-	fprintf(o_oh,"%s_mean(H_OBS)\t%s_sd(H_OBS)\n",namepop,namepop);
 	totv=totv/(col-ntmiss);
 	totsd=0;
 	for (j=0;j<col;j++){
 		if (v_ho[j]!=-9){totsd=totsd+(pow((v_ho[j]-totv),2));}
 	}
-	fprintf(o_oh,"%1.5f\t%1.5f\n",totv,sqrt(totsd/(col-ntmiss-1)));
+	fprintf(o_oh,"%s\t%1.5f\t%1.5f\n",namepop,totv,sqrt(totsd/(col-ntmiss-1)));
 	fclose(o_oh);
 	printf("[done]\n");
 }
+free(v_ho);
 return 0;
 }
 
-int hetExp(struct ind_gen *matgen, struct ind_map *matmap, char *namepop, long int col, long int row, char *type, int nt){
+int hetExp(struct ind_gen *matgen, struct ind_map *matmap, char *namepop, long int col, long int row, char *type, int header, int nt){
 /*This functionn compute the expected heterozigosity for multiallelic markers with the sample size correction of Nei1987*/
 long int j,m,n1,ntmiss;
 long int p1[4]={0,0,0,0};
-float v_he[col];
 float totv=0;
 float totsd=0;
 FILE *o_eh;
 char iname[100];
+float *v_he=malloc(col*sizeof(float));
+if (v_he==NULL){printf("\nERROR: hetExp: error allocating memory (1)");return 1;}
 int iCPU = omp_get_num_procs();/*maximum number of threads in the system*/
 if (nt>iCPU){nt=iCPU;}
 omp_set_num_threads(nt);/* Now set the number of threads*/
@@ -312,36 +323,40 @@ for (j=0;j<col;j++){
 }
 printf("[done]");
 strcpy(iname,"HET_EXP_");
-strcat(iname,namepop);
-strcat(iname,".txt");
 if (type[0]=='1'){//print on a file
+	strcat(iname,namepop);
+	strcat(iname,".txt");
 	printf(" - Writing expected het. to file\t");
 	o_eh=fopen(iname,"w");
-	fprintf(o_eh,"POS\tRS\tH_EXP\n");
+	fprintf(o_eh,"CHR\tPOS\tRS\tH_EXP\n");
 	for (j=0;j<col;j++){
-		if (v_he[j]!=-9){fprintf(o_eh,"%ld\t%s\t%1.5f\n",matmap[j].bp_pos,matmap[j].rs,v_he[j]);}
-		else{fprintf(o_eh,"%ld\t%s\tNA\n",matmap[j].bp_pos,matmap[j].rs);}
+		if (v_he[j]!=-9){fprintf(o_eh,"%d\t%ld\t%s\t%1.5f\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs,v_he[j]);}
+		else{fprintf(o_eh,"%d\t%ld\t%s\tNA\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs);}
 	}
 	fclose(o_eh);
 	printf("[done]\n");
 }
 else if (type[0]=='0'){//print only summary
-	o_eh=fopen(iname,"w");
+	strcat(iname,"SUMMARY.txt");
+	if (header){
+		o_eh=fopen(iname,"w");
+		fprintf(o_eh,"population\tmean(H_EXP)\tsd(H_EXP)\n");
+	}else{o_eh=fopen(iname,"a+");}
 	printf(" - Writing expected het. summary to file\t");
-	fprintf(o_eh,"%s_mean(H_EXP)\t%s_sd(H_EXP)\n",namepop,namepop);
 	totv=totv/(col-ntmiss);
 	totsd=0;
 	for (j=0;j<col;j++){
 		if (v_he[j]!=-9){totsd=totsd+(pow((v_he[j]-totv),2));}
 	}
-	fprintf(o_eh,"%1.5f\t%1.5f\n",totv,sqrt(totsd/(col-ntmiss-1)));
+	fprintf(o_eh,"%s\t%1.5f\t%1.5f\n",namepop,totv,sqrt(totsd/(col-ntmiss-1)));
 	fclose(o_eh);
 	printf("[done]\n");
 }
+free(v_he);
 return 0;
 }
 
-int afs(struct ind_gen *matgen, struct ind_map *matmap, long int p1, long int p2, long int p3, long int col, long int row, int unfolded, int header, int nt)
+int afs(struct ind_gen *matgen, struct ind_map *matmap, long int p1, long int p2, long int p3, long int col, long int row, int unfolded, int header, int summary, int nt)
 /*This function compute the joint allele frequency spectrum of two or three populations, or the simple allele frequency spectrum if only
 one population is provided. It computes both the folded or unfolded afs, based on the settings in the sumstat.par file.
 p1, p2, p3 are the positions of the first individuals of maximum three populations, set -1 to exclude populations. */
@@ -349,9 +364,12 @@ p1, p2, p3 are the positions of the first individuals of maximum three populatio
 long int n1, n2, n3;
 long int i,k,j;
 long int x,y,z;
+unsigned int m1, m2, m3;//missing data checking var
 long int tot[3];
 char iname[100];
+char inamedadi[100];
 FILE *o_afs;
+FILE *dadi_afs;
 int iCPU = omp_get_num_procs();/*maximum number of threads in the system*/
 if (nt>iCPU){nt=iCPU;}
 omp_set_num_threads(nt);/* Now set the number of threads*/
@@ -409,10 +427,12 @@ for(i = 0; i < x; i++){
 #pragma omp parallel for private(k,tot,i) shared(af) schedule(dynamic)
 for (k=0;k<col;k++){
 	tot[0]=0;tot[1]=0;tot[2]=0;
+	m1=0;m2=0;m3=0;
 	//printf("SNP numero %ld\n", k);
 	for (i=0;i<row;i++){
 		if (p1!=-1){
-			if (strcmp(matgen[p1].pop,matgen[i].pop)==0){
+			if (strcmp(matgen[p1].pop,matgen[i].pop)==0){	
+				if (matgen[i].gen1[k]=='N' | matgen[i].gen1[k]=='0'){m1=1;}
 				if (unfolded==0){
 					//printf("Pop1 - gen1 - obs:%c - ref:%c - ind:%ld\n",matgen[i].gen1[k], matmap[k].ref,i);
 					//printf("Pop1 - gen2 - obs:%c - ref:%c - ind:%ld\n",matgen[i].gen2[k], matmap[k].ref,i);
@@ -427,6 +447,7 @@ for (k=0;k<col;k++){
 		}
 		if (p2!=-1){
 			if (strcmp(matgen[p2].pop,matgen[i].pop)==0){
+			if (matgen[i].gen1[k]=='N' | matgen[i].gen1[k]=='0'){m2=1;}
 				if (unfolded==0){
 					//printf("Pop2 - gen1 - obs:%c - ref:%c - ind:%ld\n",matgen[i].gen1[k], matmap[k].ref,i);
 					//printf("Pop2 - gen2 - obs:%c - ref:%c - ind:%ld\n",matgen[i].gen2[k], matmap[k].ref,i);
@@ -441,6 +462,7 @@ for (k=0;k<col;k++){
 		}
 		if (p3!=-1){
 			if (strcmp(matgen[p3].pop,matgen[i].pop)==0){
+			if (matgen[i].gen1[k]=='N' | matgen[i].gen1[k]=='0'){m3=1;}
 				if (unfolded==0){
 					if (matgen[i].gen1[k]!=matmap[k].ref){tot[2]++;}
 					if (matgen[i].gen2[k]!=matmap[k].ref){tot[2]++;}
@@ -456,19 +478,31 @@ for (k=0;k<col;k++){
 	//printf("x:%ld, y:%ld, z:%ld\n",x,y,z);
 	//printf("a:%ld, b:%ld, c:%ld\n",a,b,c);
 	#pragma omp critical
-	if ((p1!=-1)&(p2!=-1)&(p3!=-1)){(af[tot[0]][tot[1]][tot[2]])++;}
-	else if ((p1!=-1)&(p2!=-1)&(p3==-1)){(af[tot[0]][tot[1]][0])++;}
-	else if ((p1!=-1)&(p2==-1)&(p3==-1)){(af[tot[0]][0][0])++;}
+	if ((p1!=-1)&(p2!=-1)&(p3!=-1)&(m1==0)&(m2==0)&(m3==0)){(af[tot[0]][tot[1]][tot[2]])++;}
+	else if ((p1!=-1)&(p2!=-1)&(p3==-1)&(m1==0)&(m2==0)){(af[tot[0]][tot[1]][0])++;}
+	else if ((p1!=-1)&(p2==-1)&(p3==-1)&(m1==0)){(af[tot[0]][0][0])++;}
 }
 printf("[done]");
 printf(" - Writing AFS to file\t");
 /*printing allele frequency spectrum header*/
-if (unfolded==1){strcpy(iname,"AFS-U_");}else{strcpy(iname,"AFS-F_");}
-if (p1!=-1){strcat(iname,matgen[p1].pop);}
-if (p2!=-1){strcat(iname,"_");strcat(iname,matgen[p2].pop);}
-if (p3!=-1){strcat(iname,"_");strcat(iname,matgen[p3].pop);}
-strcat(iname,".txt");
-o_afs=fopen(iname,"w");
+if (summary){
+	if (unfolded==1){strcpy(iname,"AFS-U_SUMMARY");}else{strcpy(iname,"AFS-F_SUMMARY");}
+	strcpy(inamedadi,iname);
+	strcat(iname,".txt");
+	strcat(inamedadi,".dadi.txt");
+	o_afs=fopen(iname,"a+");
+	dadi_afs=fopen(inamedadi,"a+");
+}else{
+	if (unfolded==1){strcpy(iname,"AFS-U_");}else{strcpy(iname,"AFS-F_");}
+	if (p1!=-1){strcat(iname,matgen[p1].pop);}
+	if (p2!=-1){strcat(iname,"_");strcat(iname,matgen[p2].pop);}
+	if (p3!=-1){strcat(iname,"_");strcat(iname,matgen[p3].pop);}
+	strcpy(inamedadi,iname);
+	strcat(iname,".txt");
+	strcat(inamedadi,".dadi.txt");
+	o_afs=fopen(iname,"w");
+	dadi_afs=fopen(inamedadi,"w");
+}
 if (header==1){
 	if (p1!=-1){
 		for (i=0;i<x;i++){
@@ -476,48 +510,91 @@ if (header==1){
 				for (k=0;k<y;k++){
 					if (p3!=-1){
 						for (j=0;j<z;j++){
-							if (unfolded==1){fprintf(o_afs,"u_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);}
-							else if (unfolded==0){fprintf(o_afs,"f_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);}
+							if (unfolded==1){
+								fprintf(o_afs,"u_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);
+								fprintf(dadi_afs,"#u_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);
+							}
+							else if (unfolded==0){
+								fprintf(o_afs,"f_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);
+								fprintf(dadi_afs,"#f_%s%ld_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k,matgen[p3].pop,j);
+							}							
 						}
 					}
 					else{
-						if (unfolded==1){fprintf(o_afs,"u_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);}
-						else if (unfolded==0){fprintf(o_afs,"f_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);}
+						if (unfolded==1){
+							fprintf(o_afs,"u_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);
+							fprintf(dadi_afs,"#u_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);
+						}
+						else if (unfolded==0){
+							fprintf(o_afs,"f_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);
+							fprintf(dadi_afs,"#f_%s%ld_%s%ld\t",matgen[p1].pop,i,matgen[p2].pop,k);
+						}
 					}
 				}
 			}
 			else{
-				if (unfolded==1){fprintf(o_afs,"u_%s%ld\t",matgen[p1].pop,i);}
-				else if (unfolded==0){fprintf(o_afs,"f_%s%ld\t",matgen[p1].pop,i);}
+				if (unfolded==1){
+					fprintf(o_afs,"u_%s%ld\t",matgen[p1].pop,i);
+					fprintf(dadi_afs,"#u_%s%ld\t",matgen[p1].pop,i);
+				}
+				else if (unfolded==0){
+					fprintf(o_afs,"f_%s%ld\t",matgen[p1].pop,i);
+					fprintf(dadi_afs,"#f_%s%ld\t",matgen[p1].pop,i);
+				}
 			}
 		}
 	}
 	fprintf(o_afs,"\n");
+	fprintf(dadi_afs,"\n");
 }
 /*printing allele frequency spectrum*/
 if ((p1!=-1)&(p2!=-1)&(p3!=-1)){
+	fprintf(dadi_afs,"%ld %ld %ld unfolded\n",x,y,z);
 	for (i=0;i<x;i++){
 		for (k=0;k<y;k++){
 			for (j=0;j<z;j++){
 				fprintf(o_afs,"%ld\t",af[i][k][j]);
+				fprintf(dadi_afs,"%ld\t",af[i][k][j]);
 			}
 		}
 	}
 	fprintf(o_afs,"\n");
+	fprintf(dadi_afs,"\n");
+	for (i=0;i<(x*y*z);i++){
+		fprintf(dadi_afs,"0");
+		if (i!=(x*y*z)){fprintf(dadi_afs," ");}
+	}
+	fprintf(dadi_afs,"\n");
 }
 else if ((p1!=-1)&(p2!=-1)&(p3==-1)){
+	fprintf(dadi_afs,"%ld %ld unfolded\n",x,y);
 	for (i=0;i<x;i++){
 		for (k=0;k<y;k++){
 			fprintf(o_afs,"%ld\t",af[i][k][0]);
+			fprintf(dadi_afs,"%ld\t",af[i][k][0]);
 		}
 	}
 	fprintf(o_afs,"\n");
+	fprintf(dadi_afs,"\n");
+	for (i=0;i<(x*y);i++){
+		fprintf(dadi_afs,"0");
+		if (i!=(x*y)){fprintf(dadi_afs," ");}
+	}
+	fprintf(dadi_afs,"\n");
 }
 else if ((p1!=-1)&(p2==-1)&(p3==-1)){
+	fprintf(dadi_afs,"%ld unfolded\n",x);
 	for (i=0;i<x;i++){
 			fprintf(o_afs,"%ld\t",af[i][0][0]);
+			fprintf(dadi_afs,"%ld\t",af[i][0][0]);
 	}
 	fprintf(o_afs,"\n");
+	fprintf(dadi_afs,"\n");
+	for (i=0;i<x;i++){
+		fprintf(dadi_afs,"0");
+		if (i!=x){fprintf(dadi_afs," ");}
+	}
+	fprintf(dadi_afs,"\n");
 }
 //printf("x:%ld, y:%ld, z:%ld\n",x,y,z);
 //printf("Tot1: %ld, tot2: %ld, tot3: %ld\n",n1,n2,n3);
@@ -528,6 +605,7 @@ for(i = 0; i < x; i++){
 }
 free(af);
 fclose(o_afs);
+fclose(dadi_afs);
 printf("[done]\n");
 return 0;
 }
@@ -552,12 +630,14 @@ double ht1[4],ht2[4],hbar[4],pbar[4],spbar[4],comb[4];
 double nc,nbar,h1,h2,a,b,c,a_tot,b_tot,c_tot;
 long int n1,n2,p1[4],p2[4];
 double dist[5]={0,0,0,0,0};
-strcpy(iname,"PAIR_DIST_");
-strcat(iname,namepop1);
-strcat(iname,"_");
-strcat(iname,namepop2);
-strcat(iname,".txt");
-o_dist=fopen(iname,"w");
+if (type[0]=='1'){
+	strcpy(iname,"PAIR_DIST_");
+	strcat(iname,namepop1);
+	strcat(iname,"_");
+	strcat(iname,namepop2);
+	strcat(iname,".txt");
+	o_dist=fopen(iname,"w");
+}
 HT_tot=0.0;HS_tot=0.0;
 HTest_tot=0.0;HSest_tot=0.0;
 gstH_tot=0.0;dj_tot=0.0;
@@ -566,7 +646,7 @@ miss=0;
 if (type[0]=='1'){//print on a file
 	printf("-> Start computing pairwise distance between populations (Pop1: [%s] - Pop2: [%s]) using %ld SNPs\t",namepop1,namepop2,col);
 	printf(" - Writing pairwise distances to file\t");
-	fprintf(o_dist,"POS\tRS\tGSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
+	fprintf(o_dist,"CHR\tPOS\tRS\tGSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
 }
 else if (type[0]=='0'){
 	printf("-> Start computing pairwise distance between populations (Pop1: [%s] - Pop2: [%s]) using %ld SNPs\t",namepop1,namepop2,col);
@@ -618,7 +698,7 @@ for (j=0;j<col;j++){
 	if ((n1==0) || (n2==0)){
 		miss++;
 		printf("\n  WARNING: DIST: all genotypes are missing in a population at locus rs:\t[%s]\n",matmap[j].rs);
-		if (type[0]=='1'){fprintf(o_dist,"%ld\t%s\tNA\tNA\tNA\tNA\tNA\n",matmap[j].bp_pos,matmap[j].rs);}
+		if (type[0]=='1'){fprintf(o_dist,"%d\t%ld\t%s\tNA\tNA\tNA\tNA\tNA\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs);}
 	}else{
 		/*nei gst computation*/
 		HE1=1.0-(pow(((double)p1[0]/(double)n1),2)+pow(((double)p1[1]/(double)n1),2)+pow(((double)p1[2]/(double)n1),2)+pow(((double)p1[3]/(double)n1),2));
@@ -659,22 +739,22 @@ for (j=0;j<col;j++){
 			dist[2]=gstH;
 			dist[3]=dj;
 			if ((a==0)&(b==0)&(c==0)){dist[4]=0.0;}else{dist[4]=a/(a+b+c);}
-			fprintf(o_dist,"%ld\t%s\t%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",matmap[j].bp_pos,matmap[j].rs,dist[0],dist[1],dist[2],dist[3],dist[4]);
+			fprintf(o_dist,"%d\t%ld\t%s\t%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",matmap[j].crom,matmap[j].bp_pos,matmap[j].rs,dist[0],dist[1],dist[2],dist[3],dist[4]);
 		}
 	}
 }
 if (type[0]=='0'){//print only summary
 	printf("[done] - Writing pairwise distances summary to file\t");
-	fprintf(o_dist,"GSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
+	//fprintf(o_dist,"GSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
 	outv[0] = 1.0-(HS_tot/HT_tot);
 	outv[1] = 1.0-(HSest_tot/HTest_tot);
 	outv[2] = gstH_tot/(col-miss);
 	outv[3] = dj_tot/(col-miss);
 	outv[4] = a_tot / (a_tot+b_tot+c_tot);
-	printf("\natot: %f - btot: %f - ctot: %f\n",a_tot,b_tot,c_tot);
-	fprintf(o_dist,"%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",outv[0],outv[1],outv[2],outv[3],outv[4]);
+	//printf("\natot: %f - btot: %f - ctot: %f\n",a_tot,b_tot,c_tot);
+	//fprintf(o_dist,"%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",outv[0],outv[1],outv[2],outv[3],outv[4]);
 }
-fclose(o_dist);
+if (type[0]=='1'){fclose(o_dist);}
 printf("[done]\n");
 //printf("\nGst(Nei73): %f - Gst(Nei83): %f - G'st(Hed05): %f - D(Jost08): %f - Fst(WC84): %f", outv[0], outv[1], outv[2], outv[3], outv[4]);
 return 0;	
@@ -814,27 +894,27 @@ strcat(iname,".txt");
 if (type[0]=='1'){//print on a file
 	o_dist=fopen(iname,"w");
 	printf(" - Writing pairwise distances to file\t");
-	fprintf(o_dist,"POS\tRS\tGSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
+	fprintf(o_dist,"CHR\tPOS\tRS\tGSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
 	for (i=0;i<col;i++){
 		if (locDist[5][i]==0){
-			fprintf(o_dist,"%ld\t%s\t%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",matmap[i].bp_pos,matmap[i].rs,locDist[0][i],locDist[1][i],locDist[2][i],locDist[3][i],locDist[4][i]);
+			fprintf(o_dist,"%d\t%ld\t%s\t%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",matmap[i].crom,matmap[i].bp_pos,matmap[i].rs,locDist[0][i],locDist[1][i],locDist[2][i],locDist[3][i],locDist[4][i]);
 		}else{
-			fprintf(o_dist,"%ld\t%s\tNA\tNA\tNA\tNA\tNA\n",matmap[i].bp_pos,matmap[i].rs);
+			fprintf(o_dist,"%d\t%ld\t%s\tNA\tNA\tNA\tNA\tNA\n",matmap[i].crom,matmap[i].bp_pos,matmap[i].rs);
 		}
 	}
 	fclose(o_dist);
 }
 else if (type[0]=='0'){//print only summary
-	o_dist=fopen(iname,"w");
+	//o_dist=fopen(iname,"w");
 	printf(" - Writing pairwise distances summary to file\t");
-	fprintf(o_dist,"GSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
+	//fprintf(o_dist,"GSTNEI73\tGSTNEI83\tGSTHED05\tDJOST\tFSTWC84\n");
 	outv[0] = 1.0-(HS_tot/HT_tot);//gst73
 	outv[1] = 1.0-(HSest_tot/HTest_tot);//gst83
 	outv[2] = gstH_tot/(col-miss);
 	outv[3] = dj_tot/(col-miss);//jostD
 	outv[4] = a_tot / (a_tot+b_tot+c_tot);//fstW&C
-	fprintf(o_dist,"%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",outv[0],outv[1],outv[2],outv[3],outv[4]);
-	fclose(o_dist);
+	//fprintf(o_dist,"%1.8f\t%1.8f\t%1.8f\t%1.8f\t%1.8f\n",outv[0],outv[1],outv[2],outv[3],outv[4]);
+	//fclose(o_dist);
 }
 for (i=0;i<6;i++){free(locDist[i]);}
 free(locDist);

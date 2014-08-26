@@ -35,17 +35,18 @@ int main(int argc, char *argv[]){
 	FILE *i_f, *i_m, *i_p, *i_a;//pointer to the input file
 	FILE *outf;//pointer for output file creation
 	/*main variables*/
-	long int i,j,k;
+	long int i,j,k,c;
 	char ifilename[100],imapfilename[100],ipopfilename[100],iancfilename[100];
 	char buf_input[100];
-	char h[5],v[5];//var per help
+	char h[5],v[5],y[5];//var per help
 	int chk;
 	//int ck_gen;//variable for ploidy
 	long int row;
 	long int col;
 	int inputType=10;//initialized to 10 but only 0,1,2 are permitted
 	/*pointer for population distances computation*/
-	double *outv;
+	double *outv,*outvt;
+	int vp;
 	/*pointers for finding unique pops*/
 	int *pos;//pointer for find unique populations positions
 	int upop;//number of unique populations
@@ -55,6 +56,7 @@ int main(int argc, char *argv[]){
 	int *par1;
 	float *par2;
 	char type[4];
+	int summary;
 	//variables for mp parallelization
 	int nt=0;
 
@@ -177,6 +179,7 @@ int main(int argc, char *argv[]){
 	chk=getParamChar(buf_input,"-t",argc,argv);
 	if ((chk!=0)||(atoi(buf_input)<1)||(atoi(buf_input)>nt)) {
 		//nt=omp_get_num_procs();
+		if (nt>col){nt=(int)col;}
 		printf("-t, Number of threads:\t\t[None specified, using %d threads]\n",nt);
 	}
 	else {
@@ -189,6 +192,11 @@ int main(int argc, char *argv[]){
         chk=getParamChar(v,"-v",argc,argv);
 	if (chk==0){printf("-v, Output genotype info:\t[yes]\n");}
 	else{printf("-v, Output genotype info:\t[no]\n");}
+
+	/*Genetic statistics are given in a shorter output*/
+        chk=getParamChar(y,"-y",argc,argv);
+	if (chk==0){printf("-y, Output mode:\t\t[summary]\n");}
+	else{printf("-y, Output mode:\t\t[extended]\n");}
 
 	/* Defininig structure vectors to allocate inidividuals informations*/
 	printf("Allocating internal data structures\t\t");
@@ -218,7 +226,7 @@ int main(int argc, char *argv[]){
 		}
 	printf("[done]\n");
 
-	/*Initialise individuals - BRING IT OUTSIDE THE MAIN CODE*/
+	/*Initialise individuals - */
 	printf("Initialising individuals\t\t\t");
 	for (i=0;i<row;i++){
 		strcpy(matgen[i].pop,"NULL");
@@ -244,7 +252,7 @@ int main(int argc, char *argv[]){
 		//outGen(matgen,row,col);
 	printf("[done]\n");
 
-	/*Initialise markers - BRING IT OUTSIDE THE MAIN CODE*/
+	/*Initialise markers - */
 	printf("Initialising genetic loci\t\t\t");
 	for (i=0;i<col;i++){
 		matmap[i].crom = 0;// short unsigned int crom;
@@ -269,10 +277,11 @@ int main(int argc, char *argv[]){
 		if (loadMapSnp(matmap, col, i_m)!=0){perror("ERROR: Error attempting to load plink map input file!\n");return 0;}
 		fclose(i_m);
 		if (i_a!=NULL){ 
-			if (loadAncAll(matmap, col, i_a)!=0){perror("ERROR: Error attempting to load ancestral allele informations from input file!\n");return 0;}
+			if (loadAncAll1(matmap, col, i_a)!=0){perror("ERROR: Error attempting to load ancestral allele informations from input file!\n");return 0;}
 			fclose(i_a);
 		}
-		if (updateAllInfo(matgen, matmap, col, row, inputType)!=0){perror("ERROR: updateAllInfo: Error updating alleles state information!\n");return 0;}
+		if (nt<2){if (updateAllInfo(matgen, matmap, col, row, inputType)!=0){perror("ERROR: updateAllInfo: Error updating alleles state information!\n");return 0;}}
+		else{if (updateAllInfo_mp(matgen, matmap, col, row, inputType, nt)!=0){perror("ERROR: updateAllInfo_mp: Error updating alleles state information!\n");return 0;}}
 	}
 	
 	/*LOAD INDIVIDUALS FROM ARLEQUIN ARP FILE*/
@@ -290,7 +299,7 @@ int main(int argc, char *argv[]){
 		if (loadPop(matgen, row, i_p)!=0){printf("ERROR: reading informations from populations input file!\n");return 0;}
 		fclose(i_p);
 		if (i_a!=NULL){ 
-			if (loadAncAll(matmap, col, i_a)!=0){perror("ERROR: Error attempting to load ancestral allele informations from input file!\n");return 0;}
+			if (loadAncAll1(matmap, col, i_a)!=0){perror("ERROR: Error attempting to load ancestral allele informations from input file!\n");return 0;}
 			fclose(i_a);
 		}
 	}
@@ -324,21 +333,29 @@ int main(int argc, char *argv[]){
 	*par2=-1;
 	strcpy(type,"NUL");
 	if (checkSumstatPar("BASEFREQ", par1, par2, type, 2)==0){
+		if (strcmp(y,"null")==0){strncpy(type,"0",strlen(type));}
 		if (*par1==1){
 			if (upop==1){
-				if (computeBaseFreq(matgen,matmap,row,col,"whole",type,nt)!=0){
+				if (computeBaseFreq(matgen,matmap,row,col,"whole",type,1,nt)!=0){
 					printf("ERROR: impossible to compute whole population base frequencies!\n");
 					return 0;
 				}
 			}
 			else if(upop>1){
 				for (i=0;i<upop;i++){
-					if (computeBaseFreq(matgen,matmap,row,col,matgen[pos[i]].pop,type,nt)!=0){
-						printf("ERROR: impossible to compute population specific base frequencies!\n");
-						return 0;
+					if (i==0){
+						if (computeBaseFreq(matgen,matmap,row,col,matgen[pos[i]].pop,type,1,nt)!=0){
+							printf("ERROR: impossible to compute population specific base frequencies!\n");
+							return 0;
+						}
+					}else{
+						if (computeBaseFreq(matgen,matmap,row,col,matgen[pos[i]].pop,type,0,nt)!=0){
+							printf("ERROR: impossible to compute population specific base frequencies!\n");
+							return 0;
+						}
 					}
 				}
-				if (computeBaseFreq(matgen,matmap,row,col,"whole",type,nt)!=0){
+				if (computeBaseFreq(matgen,matmap,row,col,"whole",type,0,nt)!=0){
 					printf("ERROR: impossible to compute whole population base frequencies!\n");
 					return 0;
 				}
@@ -354,21 +371,29 @@ int main(int argc, char *argv[]){
 	*par2=-1;
 	strcpy(type,"NUL");
 	if (checkSumstatPar("HET", par1, par2, type, 3)==0){
+		if (strcmp(y,"null")==0){strncpy(type,"0",strlen(type));}
 		if (*par1==1){
 			if (upop==1){
-				if (hetOss(matgen,matmap,"whole",col,row,type, nt)!=0){
+				if (hetOss(matgen,matmap,"whole",col,row,type,1,nt)!=0){
 					printf("ERROR: impossible to compute whole population observed heterozigosity!\n");
 					return 0;
 				}
 			}
 			else if (upop>1){
 				for (i=0;i<upop;i++){
-					if (hetOss(matgen,matmap,matgen[pos[i]].pop,col,row,type,nt)!=0){
-						printf("ERROR: impossible to compute population specific observed heterozigosity!\n");
-						return 0;
+					if (i==0){
+						if (hetOss(matgen,matmap,matgen[pos[i]].pop,col,row,type,1,nt)!=0){
+							printf("ERROR: impossible to compute population specific observed heterozigosity!\n");
+							return 0;
+						}
+					}else{
+						if (hetOss(matgen,matmap,matgen[pos[i]].pop,col,row,type,0,nt)!=0){
+							printf("ERROR: impossible to compute population specific observed heterozigosity!\n");
+							return 0;
+						}
 					}
 				}
-				if (hetOss(matgen,matmap,"whole",col,row,type,nt)!=0){
+				if (hetOss(matgen,matmap,"whole",col,row,type,0,nt)!=0){
 					printf("ERROR: impossible to compute whole population observed heterozigosity!\n");
 					return 0;
 				}
@@ -376,36 +401,45 @@ int main(int argc, char *argv[]){
 		}else{printf("Skip observed heterozigosity computation\n");}		
 		if (*par2==1){
 			if (upop==1){
-				if (hetExp(matgen,matmap,"whole",col,row,type,nt)!=0){
+				if (hetExp(matgen,matmap,"whole",col,row,type,1,nt)!=0){
 					printf("ERROR: impossible to compute whole population expected heterozigosity!\n");
 					return 0;
 				}
 			}
 			else if (upop>1){
 				for (i=0;i<upop;i++){
-					if (hetExp(matgen,matmap,matgen[pos[i]].pop,col,row,type,nt)!=0){
-						printf("ERROR: impossible to compute population specific expected heterozigosity!\n");
-						return 0;
+					if (i==0){
+						if (hetExp(matgen,matmap,matgen[pos[i]].pop,col,row,type,1,nt)!=0){
+							printf("ERROR: impossible to compute population specific expected heterozigosity!\n");
+							return 0;
+						}
+					}else{
+						if (hetExp(matgen,matmap,matgen[pos[i]].pop,col,row,type,0,nt)!=0){
+							printf("ERROR: impossible to compute population specific expected heterozigosity!\n");
+							return 0;
+						}
 					}
 				}
-			}
-			if (hetExp(matgen,matmap,"whole",col,row,type,nt)!=0){
-				printf("ERROR: impossible to compute whole population expected heterozigosity!\n");
-				return 0;
+				if (hetExp(matgen,matmap,"whole",col,row,type,0,nt)!=0){
+					printf("ERROR: impossible to compute whole population expected heterozigosity!\n");
+					return 0;
+				}
 			}
 		}else{printf("Skip expected heterozigosity computation\n");}			
 	}
 	else{perror("ERROR: reading the HET parameters from sumstat.par");}	
 
-	/*AFS (Allele frequency spectrum) COMPUTATION - output all 2D possible combinations*/
+	/*AFS (Allele frequency spectrum) COMPUTATION */
 	*par1=-1;
 	*par2=-1;
 	strcpy(type,"NUL");
+	summary=0;
 	if (checkSumstatPar("AFS", par1, par2, type, 3)==0){
+		if (strcmp(y,"null")==0){summary=1;}
 		if (*par1==1){
 			if (*par2==1){
 				for (i=0;i<upop;i++){
-					if (afs(matgen, matmap, pos[i], -1, -1, col, row, atoi(type), 1, nt)!=0){
+					if (afs(matgen, matmap, pos[i], -1, -1, col, row, atoi(type), 1, summary, nt)!=0){
 						printf("ERROR: impossible to compute unfolded AFS in population [%s]!\n",matgen[pos[i]].pop);
 						return 0;
 					}	
@@ -415,7 +449,7 @@ int main(int argc, char *argv[]){
 				if (upop<2){printf("WARNING: 2D AFS selected but only %i populations are present in input.\n",upop);}
 				for (i=0;i<upop;i++){
 					for (k=i+1;k<upop;k++){
-						if (afs(matgen, matmap, pos[i], pos[k], -1, col, row, atoi(type), 1, nt)!=0){
+						if (afs(matgen, matmap, pos[i], pos[k], -1, col, row, atoi(type), 1, summary, nt)!=0){
 							printf("ERROR: impossible to compute unfolded AFS between population [%s] and [%s]!\n",matgen[pos[i]].pop,matgen[pos[k]].pop);
 							return 0;
 						}
@@ -427,7 +461,7 @@ int main(int argc, char *argv[]){
 				for (i=0;i<upop;i++){
 					for (k=i+1;k<upop;k++){
 						for (j=k+1;j<upop;j++){
-							if (afs(matgen, matmap, pos[i], pos[k], pos[j], col, row, atoi(type), 1, nt)!=0){
+							if (afs(matgen, matmap, pos[i], pos[k], pos[j], col, row, atoi(type), 1, summary, nt)!=0){
 								printf("ERROR: impossible to compute unfolded AFS between population [%s], [%s] and [%s]!\n",matgen[pos[i]].pop,matgen[pos[k]].pop,matgen[pos[j]].pop);
 								return 0;
 							}
@@ -444,20 +478,41 @@ int main(int argc, char *argv[]){
 	*par2=-1;
 	strcpy(type,"NUL");
 	if (checkSumstatPar("DIST", par1, par2, type, 2)==0){
+		if (strcmp(y,"null")==0){strncpy(type,"0",strlen(type));}
 		if (*par1==1){
 			outv=malloc(5*sizeof(double));//vector with gstNei1973, gstNei1983, g'stHedrick2005, JostD2008 and FstW&C1984
 			if (outv==NULL){perror("ERROR: DIST: memory allocation failure.");}
+			if (upop>1){
+				outvt=malloc((upop*(upop-1)/2)*5*sizeof(double));
+				if (outvt==NULL){perror("ERROR: DIST: vector memory allocation failure.");}
+			}else{outvt=outv;}
+			vp=0;
 			for (i=0;i<upop;i++){
 				for (k=i+1;k<upop;k++){
 					for(j=0;j<5;j++){outv[j]=-5.0;}
 					if (nt<2){
-						if (dist(matgen, matmap, matgen[pos[i]].pop, matgen[pos[k]].pop, col, row, outv, type)!=0){perror("ERROR: dist: impossible to compute between population distances!");return 0;}}
-					else{
-						if (dist_mp(matgen, matmap, matgen[pos[i]].pop, matgen[pos[k]].pop, col, row, outv, type, nt)!=0){perror("ERROR: dist_mp: impossible to compute between population distances!");return 0;}
+						if (dist(matgen, matmap, matgen[pos[i]].pop, matgen[pos[k]].pop, col, row, outv, type)!=0){
+							perror("ERROR: dist: impossible to compute between population distances!");
+							return 0;
+						}else{
+							for(j=0;j<5;j++){outvt[(vp+j)]=outv[j];}
+							vp=vp+5;
 						}
+					}
+					else{
+						if (dist_mp(matgen, matmap, matgen[pos[i]].pop, matgen[pos[k]].pop, col, row, outv, type, nt)!=0){
+							perror("ERROR: dist_mp: impossible to compute between population distances!");
+							return 0;
+						}else{
+							for(j=0;j<5;j++){outvt[vp+j]=outv[j];}
+							vp=vp+5;
+						}
+					}
 				}
 			}
-			free(outv);
+			/*print dist matrix*/
+			if (type[0]=='0'){outDistMat(matgen,upop,pos,outvt);}
+			free(outv);free(outvt);
 		}else{printf("Skip population distances computation\n");}	
 	}else{perror("ERROR: reading the DIST parameters from sumstat.par");}
 

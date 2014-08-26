@@ -1,25 +1,45 @@
--------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 4P - Parallel Processing of Polymorphism Panels
--------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+4P (Parallel Processing of Polymorphism Panels) is a software for computing 
+population genetics statistics from large SNPs dataset. 
+
+The input data types handled by the program include ped/map, arp and vcf files. 
+
+The software allows the user to calculate the allele frequencies, the mean and
+locus by locus heterozygosities (expected and observed), and several measures 
+of genetic distance between populations (Nei’s Gst (1973), Nei’s Gst (1983), 
+Hedrick’s G’st (2005), Jost’s D and Weir&Cockerham’s Fst (1984)). 
+It also allows the computation of the single and joint allele frequency spectrum
+(folded and unfolded, using different dimensions) and the matrix of similarity 
+and dissimilarity indices (based on allele sharing) between individuals. 
+
+4P is written in the C programming language, using the OpenMP library to 
+distribute computation among available CPU cores. This feature allows the 
+program to make full use of the computational power of multi-core systems, 
+allowing a significant reduction in computational times. 4P, being written 
+in the fully compiled language C, is able to handle datasets larger than 
+those used in environments like R or with scripting languages (as Perl or Python).
+
 Package content:
 /src: the source code folder
 /bin: 32-64 bit binaries for win/mac/linux
 /doc: manual pdf
 /examples: example files
--------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Basic usage:
 1- set proper statistics in the sumstat.par file (all statistics are switched off by default)
-2- type "4p_<bit>_<platform> -h" for an overview over the basic options
--------------------------------------------------------------------------------------------------------------------------
+2- type "4P_<bit>_<platform> -h" for an overview over the basic options
+-------------------------------------------------------------------------------
 Some usage examples:
-example run:	4p -f example_20ind_10snp.ped -m example_20ind_10snp.map -i 0 -n 20 -s 10 -t 1
-example run:	4p -f example_1000ind_100snp.arp -i 1 -n 1000 -s 100 -t 2
-example run:	4p -f example_10ind_10snp.vcf -i 2 -n 10 -s 10 -t 1 -p example_pop_index.txt
--------------------------------------------------------------------------------------------------------------------------
+example run:	4P -f example_20ind_10snp.ped -m example_20ind_10snp.map -i 0 -n 20 -s 10 -t 1
+example run:	4P -f example_1000ind_100snp.arp -i 1 -n 1000 -s 100 -t 2
+example run:	4P -f example_10ind_10snp.vcf -i 2 -n 10 -s 10 -t 1 -p example_pop_index.txt
+-------------------------------------------------------------------------------
 Compiling informations:
 enter the src directory and type 
-compile linux:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -o 4p ./*.c
+compile linux:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -o 4P ./*.c
 compile mac:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=0 -mmacosx-version-min=10.6 -o 4p_mac ./*.c
 compile win:	see manual
--------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 

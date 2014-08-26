@@ -520,6 +520,85 @@ free(ind);
 return 0;
 }
 
+int loadAncAll1(struct ind_map *matmap, long int col, FILE *i_a)
+{
+/*This function assign the ancestral allele information to each SNP present in the matmap object reading the informations from a text file.
+The file needs to have three columns: chromosome, position and the ancestral allele (only one allele allowed).
+Note:The columns must be spaced with TAB or SPACE, other character are not permitted.
+Note: this function is called only with plink and vcf files.
+Known Bugs: it does not work if there are multiple tabs or spaces between fields*/
+char *buf;
+char *buf_split, *spf;
+long int line=0,tot=0;
+long int i;
+long int size_buf=200;//size of the reading line buffer
+char *tmp;
+short int *ind;
+short int crom;
+long int bp_pos;
+char all;
+
+buf=malloc(size_buf*sizeof(char));
+tmp=malloc(sizeof(buf)+(sizeof(char)*100));
+ind=malloc(col*sizeof(short int));
+for (i=0;i<col;i++){ind[i]=0;}
+printf("Reading ancestral alleles file");
+while (fgets(buf,size_buf,i_a) !=NULL){
+	line++;
+	//printf("\nAnc all line %s",buf);
+	if (strchr(buf,' ')==NULL & strchr(buf,'\t')==NULL ){
+		printf("ERROR: loadAncAll: wrong separator character in line %ld. Please use only TAB or SPACE.\n",line);
+		free(buf);
+		free(tmp);
+		free(ind);
+		return 1;
+		}
+	choppy(buf);
+	all='N';
+	for (i=0;i<3;i++){
+		if (i==0){buf_split=strtok_r(buf," \t",&spf);}else{buf_split=strtok_r(NULL," \t",&spf);}
+		if (buf_split!=NULL){
+			if(i==0){ crom = (short unsigned)atoi(buf_split);}
+			else if (i==1){ bp_pos = (long int)atol(buf_split);}
+			else if (i==2){ all = *buf_split;}
+		}
+		else{
+			printf("ERROR: loadAncAll: bad AncAllFile format. (Check line %ld)\n",line);
+			free(buf);
+			free(tmp);
+			free(ind);
+			return 1;
+		}
+	}
+	//printf("\nCrom: %d, pos: %ld, ancall: %c",crom,bp_pos,all);
+	for (i=0;i<col;i++){
+		//printf("\nRow : %ld",i);
+		if (ind[i]!=0){continue;}
+		if (matmap[i].crom == crom ){
+			//printf("\nAAMatmap: %s - Field: %s\n",matmap[i].rs,buf_split);
+			if (matmap[i].bp_pos == bp_pos){
+					matmap[i].anc=all;
+					tot++;
+					ind[i]=1;
+					break;
+	
+			}
+		}
+
+	}
+	if (tot==col){break;}
+}
+if (tot!=col){printf("WARNING: loadAncAll: some SNPs have no ancestral allele information. (%ld SNPs with allele information - %ld SNPs in total).\n",tot,col);}
+else{printf("\t\t\t[ancestral state loaded for %ld/%ld SNPs]\n",tot,col);}
+free(buf);
+free(tmp);
+free(ind);
+return 0;
+}
+
+
+
+
 int loadAncAll_fast(struct ind_map *matmap, long int col, FILE *i_a)
 {
 /*This function assign the ancestral allele information to each SNP present in the matmap object reading the informations from a text file.

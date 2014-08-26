@@ -39,6 +39,7 @@ printf("\t-p <file>\tPopulations input file name (only for vcf files)\n");
 printf("\t-a <file>\tAncestral allele input file name (only for plink and vcf files)\n");
 printf("\t-t <number>\tNumber of cores used for computations\n");
 printf("\t-v\t\tOutput genotype informations to the standard output\n");
+printf("\t-y\t\tOutput statistics in a single file\n");
 printf("\t-h\t\tPrint this help\n");
 printf("\nUsage: 4p -f <inputfile> -m <mapfile> -i <inputtype> -n <nind> -s <nsnp> -p <populationfile> -a <ancallfile> -t <ncores>\n");
 }
@@ -157,6 +158,34 @@ for (i=0;i<col;i++){
 return 0;
 }
 
+int outDistMat(struct ind_gen *matgen, int upop, int *pos,double *outvt)
+/*This function print distances between populations in a matrix format*/
+{
+int j,i,k,c,vp;
+FILE *o_dist;
+o_dist=fopen("PAIR_DIST_SUMMARY.txt","w");
+for (j=0;j<5;j++){
+	vp=j;
+	if (j==0){fprintf(o_dist,"\n#gstNei1973 distance matrix between populations\n");}
+	else if (j==1){fprintf(o_dist,"\n#gstNei1983 distance matrix between populations\n");}
+	else if (j==2){fprintf(o_dist,"\n#gstHedrick2005 distance matrix between populations\n");}
+	else if (j==3){fprintf(o_dist,"\n#JostD2008 distance matrix between populations\n");}
+	else if (j==4){fprintf(o_dist,"\n#FstW&C1984 distance matrix between populations\n");}
+	for (i=0;i<upop;i++){fprintf(o_dist,"\t%s",matgen[pos[i]].pop);}
+	for (i=0;i<upop;i++){
+		fprintf(o_dist,"\n%s",matgen[pos[i]].pop);
+		for (c=0;c<i+1;c++){fprintf(o_dist,"\t-");}
+		for (k=i+1;k<upop;k++){
+			fprintf(o_dist,"\t%1.8f",outvt[vp]);
+			vp=vp+5;
+		}
+	}
+}
+fprintf(o_dist,"\n");
+fclose(o_dist);
+return 0;
+}
+
 char getAll(char ref, char *alt, int x)
 /*This function take the xth allele present in the matgen.alt field for a SNP
 or take the reference if x is 0. If no valid conversion could be performed, a 'N' value is returned. */
@@ -193,8 +222,9 @@ short int k,pos;
 char ref;
 long int *tot;//A,G,T,C counter
 const char base[5]="AGTC\0";
+printf("Updating ref/alt alleles\t\t\t");
 tot=malloc(4*sizeof(long int));
-if (tot==NULL){printf("ERROR: updateAllInfo_mp: memory allocation failure.\n");return 1;}
+if (tot==NULL){printf("ERROR: updateAllInfo: memory allocation failure.\n");return 1;}
 if (inputType==1){
 	for (i=0;i<col;i++){
 		for (k=0;k<4;k++){tot[k]=0;}
@@ -242,6 +272,7 @@ else{
 		else{strcpy(matmap[i].alt,"N\0");}
 	}
 }
+printf("[done]\n");
 free(tot);
 return 0;
 }
@@ -256,6 +287,7 @@ const char base[5]="AGTC\0";
 int iCPU = omp_get_num_procs();/*maximum number of threads in the system*/
 if (nt>iCPU){nt=iCPU;}
 omp_set_num_threads(nt);/* Now set the number of threads*/
+printf("Updating ref/alt alleles\t\t\t");
 tot=malloc(4*sizeof(long int));
 if (tot==NULL){printf("ERROR: updateAllInfo_mp: memory allocation failure.\n");return 1;}
 if (inputType==1){
@@ -311,6 +343,7 @@ else{
 		else{strcpy(matmap[i].alt,"N\0");}
 	}
 }
+printf("[done]\n");
 free(tot);
 return 0;
 }

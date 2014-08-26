@@ -17,7 +17,7 @@ int ok=1;
 for (i=0;i<argc;i++){
 	if (strncmp(argv[i],flag,2)==0){
 		if (ok==1){
-			if ((strcmp(flag,"-h")!=0)&(strcmp(flag,"-v")!=0)){
+			if ((strcmp(flag,"-h")!=0)&(strcmp(flag,"-v")!=0)&(strcmp(flag,"-y")!=0)){
 				strcpy(param,argv[(i+1)]);
 				ok=0;
 			}

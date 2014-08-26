@@ -3,7 +3,7 @@
 // ifoutput: 0:skip computation / 1:print to file
 // onlymean&sd: 0:print ONLY mean and sd over loci / 1:print the statistic locus by locus
 //parameters for base frequency: name - ifoutput - onlymean&sd
-BASEFREQ#0#1
+BASEFREQ#1#0
 //parameters for heterozigosity: name - ifoutputHETOBS - ifoutputHETEXP - onlymean&sd
 HET#0#0#0
 //Parameters for AFS computation: name - ifoutputAFS - AFSdimensions(1, 2 or 3) - unfolded?(0n/1y)
