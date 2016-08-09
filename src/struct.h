@@ -2,10 +2,10 @@
 
 struct ind_gen//PEDFILE-LIKE STRUCTURE: we allocate here informations about each individual present in the ped file
 {
-char pop[20];
-char name_ind[50];
-char paternal_id[20];
-char maternal_id[20];
+char pop[60];
+char name_ind[60];
+char paternal_id[60];
+char maternal_id[60];
 char sex;
 int phen;
 unsigned int phase;
@@ -38,4 +38,3 @@ int qual;
 char filt[10];
 char info[100];
 };
-

@@ -38,7 +38,7 @@ example run:	4P -f example_10ind_10snp.vcf -i 2 -n 10 -s 10 -t 1 -p example_pop_
 -------------------------------------------------------------------------------
 Compiling informations:
 enter the src directory and type 
-compile linux:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -o 4P ./*.c
+compile linux:	gcc -O3 -fopenmp -D_FILE_OFFSET_BITS=64 -o 4P ./*.c -lm
 compile mac:	gcc -O3 -fopenmp -lm -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=0 -mmacosx-version-min=10.6 -o 4p_mac ./*.c
 compile win:	see manual
 -------------------------------------------------------------------------------
